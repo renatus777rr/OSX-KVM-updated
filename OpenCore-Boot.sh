@@ -121,14 +121,18 @@ find_image() {
             return 0
         fi
     done
-    return 1
+    echo "${SCRIPT_DIR}/${name}"
 }
 
 validate_files() {
     local files=("$@")
+    local missing=0
     for file in "${files[@]}"; do
-        [[ -f "$file" ]]
+        if [[ ! -f "$file" ]]; then
+            ((missing++))
+        fi
     done
+    return $missing
 }
 
 main() {
@@ -137,11 +141,11 @@ main() {
 
     local mac_hdd opencore install_media ovmf_code ovmf_vars
 
-    mac_hdd="$(find_image 'mac_hdd_ng.img' || find_image '*.img' || echo "${SCRIPT_DIR}/mac_hdd_ng.img")"
-    opencore="$(find_image 'OpenCore.qcow2' || find_image '*.qcow2' || echo "${SCRIPT_DIR}/OpenCore/OpenCore.qcow2")"
-    install_media="$(find_image 'BaseSystem.img' || echo "${SCRIPT_DIR}/BaseSystem.img")"
-    ovmf_code="$(find_image 'OVMF_CODE_4M.fd' || find_image 'OVMF_CODE.fd' || echo "${SCRIPT_DIR}/OVMF_CODE_4M.fd")"
-    ovmf_vars="$(find_image 'OVMF_VARS-*.fd' || find_image 'OVMF_VARS.fd' || echo "${SCRIPT_DIR}/OVMF_VARS-1920x1080.fd")"
+    mac_hdd="$(find_image 'mac_hdd_ng.img')"
+    opencore="$(find_image 'OpenCore.qcow2')"
+    install_media="$(find_image 'BaseSystem.img')"
+    ovmf_code="$(find_image 'OVMF_CODE_4M.fd')"
+    ovmf_vars="$(find_image 'OVMF_VARS-1920x1080.fd')"
 
     local required_files=(
         "$ovmf_code"

@@ -11,7 +11,9 @@ load_config() {
 detect_system() {
     local cpuinfo="/proc/cpuinfo"
     if [[ ! -r "$cpuinfo" ]]; then
-        echo "WARN: Cannot read $cpuinfo, using defaults" >&2
+        CPU_THREADS=4
+        CPU_CORES=2
+        CPU_SOCKETS=1
         return 1
     fi
 
@@ -27,7 +29,6 @@ detect_system() {
 detect_memory() {
     local meminfo="/proc/meminfo"
     if [[ ! -r "$meminfo" ]]; then
-        echo "WARN: Cannot read $meminfo, using 4096MiB" >&2
         ALLOCATED_RAM=4096
         return 1
     fi
@@ -123,15 +124,18 @@ find_image() {
     return 1
 }
 
+validate_files() {
+    local files=("$@")
+    for file in "${files[@]}"; do
+        [[ -f "$file" ]]
+    done
+}
+
 main() {
     load_config
     auto_tune
 
-    local mac_hdd
-    local opencore
-    local install_media
-    local ovmf_code
-    local ovmf_vars
+    local mac_hdd opencore install_media ovmf_code ovmf_vars
 
     mac_hdd="$(find_image 'mac_hdd_ng.img' || find_image '*.img' || echo "${SCRIPT_DIR}/mac_hdd_ng.img")"
     opencore="$(find_image 'OpenCore.qcow2' || find_image '*.qcow2' || echo "${SCRIPT_DIR}/OpenCore/OpenCore.qcow2")"
@@ -148,10 +152,9 @@ main() {
     )
 
     if ! validate_files "${required_files[@]}"; then
-        echo "Run setup:"
-        echo "  qemu-img create -f qcow2 \"$mac_hdd\" 128G"
-        echo "  Download OpenCore/BaseSystem/OVMF to $SCRIPT_DIR"
-        exit 1
+        echo "hdd and installer not found, do you want still continue? (y/n): "
+        read -r response
+        [[ "$response" =~ ^[Yy]$ ]] || exit 1
     fi
 
     echo "Starting macOS KVM"
@@ -189,15 +192,6 @@ main() {
     fi
 
     exec qemu-system-x86_64 "${args[@]}"
-}
-
-validate_files() {
-    local files=("$@")
-    for file in "${files[@]}"; do
-        if [[ ! -f "$file" ]]; then
-            return 1
-        fi
-    done
 }
 
 main "$@"
